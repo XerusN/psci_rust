@@ -255,6 +255,8 @@ fn jacobi_method(info : &InitInfo, a : &Vec<Vec<f64>>, b : &Vec<f64>, p_vec : &m
     
     let k_max = p_vec.len();
     
+    p_vec.fill(0.0);
+    
     for i in 0..k_max {
         r[i] = -b[i];
         for j in 0..k_max {
@@ -265,6 +267,9 @@ fn jacobi_method(info : &InitInfo, a : &Vec<Vec<f64>>, b : &Vec<f64>, p_vec : &m
     let r_norm_0 = norm_2(r);
     let mut r_norm = r_norm_0;
     let mut iteration = 0;
+    
+    
+    println!("{:?}", r_norm_0);
     
     // println!{"{}", r_norm_0};
     while r_norm > r_norm_0 * r_tol {
@@ -281,11 +286,13 @@ fn jacobi_method(info : &InitInfo, a : &Vec<Vec<f64>>, b : &Vec<f64>, p_vec : &m
         
         r_norm = norm_2(r);
         iteration += 1;
-        if iteration % info.frame == 0 {
-            matrixize_vector(&info, p, &p_vec);
-            write_output(iteration, info, space_grid, p);
-        }
+        // if iteration % info.frame == 0 {
+        //     matrixize_vector(&info, p, &p_vec);
+        //     write_output(iteration, info, space_grid, p);
+        // }
+        println!("{:?}", iteration);
     }
+    
     
     matrixize_vector(&info, p, &p_vec);
     write_output(iteration, info, space_grid, p);    
