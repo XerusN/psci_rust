@@ -1,7 +1,7 @@
 ### Variables Etape 2
 
 # n_x n_y
-21 21
+41 41
 
 #t_f
 0.1
@@ -10,7 +10,7 @@
 1 1
 
 # frame
-1
+10
 
 # viscosity
 1
@@ -25,4 +25,4 @@
 1.0
 
 # Convection scheme (0 : Upwind, 1 : centered 2nd order)
-1
+0

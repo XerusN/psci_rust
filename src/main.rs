@@ -1,3 +1,4 @@
+use core::panic;
 use std::fs;
 use std::io::{BufRead, BufReader};
 use std::io::prelude::*;
@@ -219,8 +220,6 @@ fn init_v(info : &InitInfo) -> Vec<Vec<f64>> {
     v
 }
 
-
-
 fn init_p(info : &InitInfo) -> Vec<Vec<f64>> {
     
     let mut p : Vec<Vec<f64>> = Vec::new();
@@ -271,14 +270,11 @@ fn matrixize_vector(info : &InitInfo, matrix : &mut Vec<Vec<f64>>, vector : &Vec
 }
 
 
-
 fn norm_2(vector : &Vec<f64>) -> f64 {
-    
-    let n = vector.len();
     
     let mut norm : f64 = 0.0;
     
-    for i in 0..n {       
+    for i in 0..vector.len() {       
         norm += vector[i].powf(2.0);
     }
     
@@ -294,55 +290,54 @@ fn jacobi_method(a : &Vec<Vec<f64>>, b : &Vec<f64>, p_vec : &mut Vec<f64>, p_vec
     
     let k_max = p_vec.len();
     
-    let mut upper_norm : f64 = 1.0;
-    let mut lower_norm : f64 = 1.0;
-    
     for i in 0..k_max {
         r[i] = -b[i];
         for j in 0..k_max {
-            r[i] += a[i][j]*p_vec[j];
+            r[i] = r[i] + a[i][j]*p_vec[j];
         }
     }
-
+    
+    let mut upper_norm : f64 = norm_2(&r);
+    let lower_norm : f64 = norm_2(&b);
+    
     let mut iteration = 0;
     
-    
-    // println!{"{}", r_norm_0};
-    while upper_norm/lower_norm > epsilon {
+    while upper_norm > epsilon*lower_norm {
         
         for i in 0..k_max {
             p_vec_temp[i] = p_vec[i];
-            p_vec[i] -= r[i] / a[i][i];
         }
         
+        for i in 0..k_max {
+            p_vec[i] = p_vec_temp[i] - r[i] / a[i][i];
+        }
         
         for i in 0..k_max {
             r[i] = -b[i];
             for j in 0..k_max {
-                r[i] += a[i][j] * p_vec[j];
+                r[i] = r[i] + a[i][j]*p_vec[j];
             }
-            p_vec_temp[i] = p_vec[i] - p_vec_temp[i]
+            //p_vec_temp[i] = p_vec[i] - p_vec_temp[i]
         }
         
         iteration += 1;
         
-        upper_norm = norm_2(&p_vec_temp);
-        lower_norm = norm_2(&p_vec);
+        // upper_norm = norm_2(&p_vec_temp);
+        // lower_norm = norm_2(&p_vec);
+        upper_norm = norm_2(&r);
+        //lower_norm = norm_2(&b);
         
         if iteration >= n_max {
             panic!("Nombre d'iteration max atteint sur jacobi : {:?}", n_max);
         }
         
         if iteration % 100 == 0 {
-            println!("norm(r)/norm(b) : {:?}", upper_norm/lower_norm);
+            println!("convergence : {:?} | {:?}", upper_norm/lower_norm, lower_norm);
         }
     }
-    println!("jacobi : {:?}", iteration);
-    
-    
+    println!("jacobi : {:?} iterations", iteration);
     
 }
-
 
 
 
@@ -440,8 +435,12 @@ fn speed_guess(info : &InitInfo, u : &Vec<Vec<f64>>, u_temp : &mut Vec<Vec<f64>>
                         upwind_y = 0.0
                     }
                     
-                    u_temp[i][j] = u[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0)) - u[i][j]*dt/dx*2.0*(upwind_x - 0.5) - v[i][j]*dt/dy*2.0*(upwind_y - 0.5)) + u[i-1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/dx*upwind_x) + u[i][j-1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/dy*upwind_y) + u[i+1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/dx*(1.0 - upwind_x)) + u[i][j+1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/dy*(1.0 - upwind_y));
-                    v_temp[i][j] = v[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0)) - u[i][j]*dt/dx*2.0*(upwind_x - 0.5) - v[i][j]*dt/dy*2.0*(upwind_y - 0.5)) + v[i-1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/dx*upwind_x) + v[i][j-1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/dy*upwind_y) + v[i+1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/dx*(1.0 - upwind_x)) + v[i][j+1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/dy*(1.0 - upwind_y));
+                    u_temp[i][j] = u[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0)) - u[i][j]*dt/dx*2.0*(upwind_x - 0.5) - v[i][j]*dt/dy*2.0*(upwind_y - 0.5)) + u[i-1][j]*dt*(info.viscosity/dx.powf(2.0) + u[i][j]/dx*upwind_x) + u[i][j-1]*dt*(info.viscosity/dy.powf(2.0) + v[i][j]/dy*upwind_y) + u[i+1][j]*dt*(info.viscosity/dx.powf(2.0) + u[i][j]/dx*(1.0 - upwind_x)) + u[i][j+1]*dt*(info.viscosity/dy.powf(2.0) + v[i][j]/dy*(1.0 - upwind_y));
+                    v_temp[i][j] = v[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0)) - u[i][j]*dt/dx*2.0*(upwind_x - 0.5) - v[i][j]*dt/dy*2.0*(upwind_y - 0.5)) + v[i-1][j]*dt*(info.viscosity/dx.powf(2.0) + u[i][j]/dx*upwind_x) + v[i][j-1]*dt*(info.viscosity/dy.powf(2.0) + v[i][j]/dy*upwind_y) + v[i+1][j]*dt*(info.viscosity/dx.powf(2.0) + u[i][j]/dx*(1.0 - upwind_x)) + v[i][j+1]*dt*(info.viscosity/dy.powf(2.0) + v[i][j]/dy*(1.0 - upwind_y));
+                    
+                    // if (u_temp[i][j] > 1.0) | (v_temp[i][j] > 1.0) {
+                    //     panic!("speed guess")
+                    // }
                     
                 }
             
@@ -453,17 +452,16 @@ fn speed_guess(info : &InitInfo, u : &Vec<Vec<f64>>, u_temp : &mut Vec<Vec<f64>>
             for i in 1..info.n_x-1 {
                 for j in 1..info.n_y-1 {
                     
-                    u_temp[i][j] = u[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + u[i-1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/(2.0*dx)) + u[i][j-1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/(2.0*dy)) + u[i+1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/(2.0*dx)) + u[i][j+1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/(2.0*dy));
-                    v_temp[i][j] = v[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + v[i-1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/(2.0*dx)) + v[i][j-1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/(2.0*dy)) + v[i+1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/(2.0*dx)) + v[i][j+1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/(2.0*dy));
+                    u_temp[i][j] = u[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + u[i-1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/(2.0*dx)) + u[i][j-1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/(2.0*dy)) + u[i+1][j]*(info.viscosity*dt/dx.powf(2.0) - u[i][j]/(2.0*dx)) + u[i][j+1]*(info.viscosity*dt/dy.powf(2.0) - v[i][j]/(2.0*dy));
+                    v_temp[i][j] = v[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + v[i-1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/(2.0*dx)) + v[i][j-1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/(2.0*dy)) + v[i+1][j]*(info.viscosity*dt/dx.powf(2.0) - u[i][j]/(2.0*dx)) + v[i][j+1]*(info.viscosity*dt/dy.powf(2.0) - v[i][j]/(2.0*dy));
 
-                    
                 }
             
             }
         },
         
         
-    }
+    };
     
     
 }
@@ -474,7 +472,7 @@ fn compute_pressure(info : &InitInfo, dt : f64, p : &mut Vec<Vec<f64>>, u_temp :
     
     compute_b(info, dt, b, u_temp, v_temp);
     
-    vectorize_matrix(info, &p, p_vec);
+    vectorize_matrix(info, p, p_vec);
     
     jacobi_method(a, b, p_vec, p_vec_temp, r);
     
@@ -506,11 +504,11 @@ fn adjust_speed(info : &InitInfo, dt : f64, p : &Vec<Vec<f64>>, u : &mut Vec<Vec
             u[i][j] = u_temp[i][j] - dt/info.density*(p[i+1][j] - p[i-1][j])/(2.0*dx);
             v[i][j] = v_temp[i][j] - dt/info.density*(p[i][j+1] - p[i][j-1])/(2.0*dy);
             
+            // if (u[i][j] > 1.0) | (v[i][j] > 1.0) {
+            //     panic!("adjust speed")
+            // }
         }
-        
     }
-    
-    
 }
 
 fn main() {
@@ -556,7 +554,7 @@ fn main() {
         
         if t + dt >= info.t_f {
             last_iteration = true;
-            dt = info.t_f - t;
+            break;
         }
         println!("dt = {:?}", dt);
         
@@ -583,5 +581,7 @@ fn main() {
             write_output(iteration, &info, &space_grid, &u, &v, &p);
         }
     }
+    
+    write_output(iteration, &info, &space_grid, &u, &v, &p);
     
 }
