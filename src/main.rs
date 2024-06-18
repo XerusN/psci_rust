@@ -281,14 +281,53 @@ fn norm_2(vector : &Vec<f64>) -> f64 {
     norm.sqrt()
 }
 
+fn compute_pressure_integral(info : &InitInfo, p_vec : &mut Vec<f64>) -> f64 {
+    
+    let mut integral : f64 = 0.0;
+    
+    let dx : f64 = info.l_x/((info.n_x as f64) - 1.0);
+    let dy : f64 = info.l_y/((info.n_y as f64) - 1.0);
+    
+    for i in 0..info.n_x {
+        for j in 0..info.n_y {
+            
+            let k = j*info.n_x + i;
+            
+            if ((i == 0) | (i == info.n_x-1)) & ((j == 0) | (j == info.n_y-1)) {
+                integral += p_vec[k]*dx*dy*0.25;
+            }
+            else if (i == 0) | (i == info.n_x-1) | (j == 0) | (j == info.n_y-1) {
+                integral += p_vec[k]*dx*dy*0.5;
+            }
+            else {
+                integral += p_vec[k]*dx*dy;
+            }
+        }
+    }
+    
+    integral /= info.l_x*info.l_y;
+    
+    for i in 0..info.n_x {
+        for j in 0..info.n_y {
+            
+            let k = j*info.n_x + i;
+            
+            p_vec[k] -= integral;
+        }
+    }
+    
+    integral
+    
+}
 
-
-fn jacobi_method(a : &Vec<Vec<f64>>, b : &Vec<f64>, p_vec : &mut Vec<f64>, p_vec_temp : &mut Vec<f64>, r : &mut Vec<f64>) {
+fn jacobi_method(info : &InitInfo, a : &Vec<Vec<f64>>, b : &Vec<f64>, p_vec : &mut Vec<f64>, p_vec_temp : &mut Vec<f64>, r : &mut Vec<f64>) {
     
     let epsilon = 1e-3;
     let n_max: usize = 20000;
     
     let k_max = p_vec.len();
+    
+    let mut integral : f64 = compute_pressure_integral(info, p_vec);
     
     for i in 0..k_max {
         r[i] = -b[i];
@@ -298,9 +337,10 @@ fn jacobi_method(a : &Vec<Vec<f64>>, b : &Vec<f64>, p_vec : &mut Vec<f64>, p_vec
     }
     
     let mut upper_norm : f64 = norm_2(&r);
-    let lower_norm : f64 = norm_2(&b);
+    let mut lower_norm : f64 = norm_2(&b);
     
     let mut iteration = 0;
+    
     
     while upper_norm > epsilon*lower_norm {
         
@@ -312,19 +352,21 @@ fn jacobi_method(a : &Vec<Vec<f64>>, b : &Vec<f64>, p_vec : &mut Vec<f64>, p_vec
             p_vec[i] = p_vec_temp[i] - r[i] / a[i][i];
         }
         
+        integral = compute_pressure_integral(info, p_vec);
+        
         for i in 0..k_max {
             r[i] = -b[i];
             for j in 0..k_max {
                 r[i] = r[i] + a[i][j]*p_vec[j];
             }
-            //p_vec_temp[i] = p_vec[i] - p_vec_temp[i]
+            p_vec_temp[i] = p_vec[i] - p_vec_temp[i]
         }
         
         iteration += 1;
         
-        // upper_norm = norm_2(&p_vec_temp);
-        // lower_norm = norm_2(&p_vec);
-        upper_norm = norm_2(&r);
+        upper_norm = norm_2(&p_vec_temp);
+        lower_norm = norm_2(&p_vec);
+        //upper_norm = norm_2(&r);
         //lower_norm = norm_2(&b);
         
         if iteration >= n_max {
@@ -335,7 +377,7 @@ fn jacobi_method(a : &Vec<Vec<f64>>, b : &Vec<f64>, p_vec : &mut Vec<f64>, p_vec
             println!("convergence : {:?} | {:?}", upper_norm/lower_norm, lower_norm);
         }
     }
-    println!("jacobi : {:?} iterations", iteration);
+    println!("jacobi : {:?} iterations | integral = {:?}", iteration, integral);
     
 }
 
@@ -474,7 +516,7 @@ fn compute_pressure(info : &InitInfo, dt : f64, p : &mut Vec<Vec<f64>>, u_temp :
     
     vectorize_matrix(info, p, p_vec);
     
-    jacobi_method(a, b, p_vec, p_vec_temp, r);
+    jacobi_method(info, a, b, p_vec, p_vec_temp, r);
     
     matrixize_vector(info, p, p_vec);
     

@@ -1,10 +1,10 @@
 ### Variables Etape 2
 
 # n_x n_y
-41 41
+51 51
 
 #t_f
-0.1
+10.0
 
 # l_x l_y
 1 1
@@ -13,16 +13,16 @@
 10
 
 # viscosity
-1
+100
 # density
 1
 # cfl
-0.2
+1.0
 # Fo
 0.1
 
 # Reynolds number
-1.0
+100
 
 # Convection scheme (0 : Upwind, 1 : centered 2nd order)
-0
+1
