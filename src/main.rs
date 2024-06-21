@@ -56,18 +56,17 @@ fn read_info(file_path : &str) -> InitInfo{
     
     let frame : usize = file_lines[12].parse().unwrap();
     
-    let viscosity : f64 = file_lines[15].parse().unwrap();
+    let density : f64 = file_lines[15].parse().unwrap();
     
-    let density : f64 = file_lines[17].parse().unwrap();
+    let cfl : f64 = file_lines[17].parse().unwrap();
     
-    let cfl : f64 = file_lines[19].parse().unwrap();
+    let fo : f64 = file_lines[19].parse().unwrap();
     
-    let fo : f64 = file_lines[21].parse().unwrap();
+    let re : f64 = file_lines[22].parse().unwrap();
     
-    let re : f64 = file_lines[24].parse().unwrap();
+    let scheme : usize = file_lines[25].parse().unwrap();
     
-    let scheme : usize = file_lines[27].parse().unwrap();
-    
+    let viscosity : f64 = 1.0*1.0/re;
     
     InitInfo {
         n_x : n_x,
@@ -293,7 +292,7 @@ fn compute_pressure_integral(info : &InitInfo, p_vec : &mut Vec<f64>) -> f64 {
             
             let k = j*info.n_x + i;
             
-            if ((i == 0) | (i == info.n_x-1)) & ((j == 0) | (j == info.n_y-1)) {
+            if ((i == 0) | (i == info.n_x-1)) ^ ((j == 0) | (j == info.n_y-1)) {
                 integral += p_vec[k]*dx*dy*0.25;
             }
             else if (i == 0) | (i == info.n_x-1) | (j == 0) | (j == info.n_y-1) {
@@ -374,7 +373,7 @@ fn jacobi_method(info : &InitInfo, a : &Vec<Vec<f64>>, b : &Vec<f64>, p_vec : &m
         }
         
         if iteration % 100 == 0 {
-            println!("convergence : {:?} | {:?}", upper_norm/lower_norm, lower_norm);
+            println!("convergence : {:?} | integral : {:?}", upper_norm/lower_norm, integral);
         }
     }
     println!("jacobi : {:?} iterations | integral = {:?}", iteration, integral);
@@ -494,8 +493,8 @@ fn speed_guess(info : &InitInfo, u : &Vec<Vec<f64>>, u_temp : &mut Vec<Vec<f64>>
             for i in 1..info.n_x-1 {
                 for j in 1..info.n_y-1 {
                     
-                    u_temp[i][j] = u[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + u[i-1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/(2.0*dx)) + u[i][j-1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/(2.0*dy)) + u[i+1][j]*(info.viscosity*dt/dx.powf(2.0) - u[i][j]/(2.0*dx)) + u[i][j+1]*(info.viscosity*dt/dy.powf(2.0) - v[i][j]/(2.0*dy));
-                    v_temp[i][j] = v[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + v[i-1][j]*(info.viscosity*dt/dx.powf(2.0) + u[i][j]/(2.0*dx)) + v[i][j-1]*(info.viscosity*dt/dy.powf(2.0) + v[i][j]/(2.0*dy)) + v[i+1][j]*(info.viscosity*dt/dx.powf(2.0) - u[i][j]/(2.0*dx)) + v[i][j+1]*(info.viscosity*dt/dy.powf(2.0) - v[i][j]/(2.0*dy));
+                    u_temp[i][j] = u[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + u[i-1][j]*dt*(info.viscosity/dx.powf(2.0) + u[i][j]/(2.0*dx)) + u[i][j-1]*dt*(info.viscosity/dy.powf(2.0) + v[i][j]/(2.0*dy)) + u[i+1][j]*dt*(info.viscosity/dx.powf(2.0) - u[i][j]/(2.0*dx)) + u[i][j+1]*dt*(info.viscosity/dy.powf(2.0) - v[i][j]/(2.0*dy));
+                    v_temp[i][j] = v[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + v[i-1][j]*dt*(info.viscosity/dx.powf(2.0) + u[i][j]/(2.0*dx)) + v[i][j-1]*dt*(info.viscosity/dy.powf(2.0) + v[i][j]/(2.0*dy)) + v[i+1][j]*dt*(info.viscosity/dx.powf(2.0) - u[i][j]/(2.0*dx)) + v[i][j+1]*dt*(info.viscosity/dy.powf(2.0) - v[i][j]/(2.0*dy));
 
                 }
             
