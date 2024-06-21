@@ -23,4 +23,4 @@
 100
 
 # Convection scheme (0 : Upwind, 1 : centered 2nd order)
-1
+2

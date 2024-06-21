@@ -437,6 +437,20 @@ fn compute_time_step(info : &InitInfo, u : &Vec<Vec<f64>>, v : &Vec<Vec<f64>>) -
 }
 
 
+fn cd2_scheme(i : usize, j : usize, info : &InitInfo, u : &Vec<Vec<f64>>, u_temp : &mut Vec<Vec<f64>>, v : &Vec<Vec<f64>>, v_temp : &mut Vec<Vec<f64>>, dt : f64) {
+    
+    let dx : f64 = info.l_x/((info.n_x as f64) - 1.0);
+    let dy : f64 = info.l_y/((info.n_y as f64) - 1.0);
+    
+    //println!("i = {:?}, j = {:?}", i, j);
+    
+    u_temp[i][j] = u[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + u[i-1][j]*dt*(info.viscosity/dx.powf(2.0) + u[i][j]/(2.0*dx)) + u[i][j-1]*dt*(info.viscosity/dy.powf(2.0) + v[i][j]/(2.0*dy)) + u[i+1][j]*dt*(info.viscosity/dx.powf(2.0) - u[i][j]/(2.0*dx)) + u[i][j+1]*dt*(info.viscosity/dy.powf(2.0) - v[i][j]/(2.0*dy));
+    v_temp[i][j] = v[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + v[i-1][j]*dt*(info.viscosity/dx.powf(2.0) + u[i][j]/(2.0*dx)) + v[i][j-1]*dt*(info.viscosity/dy.powf(2.0) + v[i][j]/(2.0*dy)) + v[i+1][j]*dt*(info.viscosity/dx.powf(2.0) - u[i][j]/(2.0*dx)) + v[i][j+1]*dt*(info.viscosity/dy.powf(2.0) - v[i][j]/(2.0*dy));
+
+}
+
+
+
 
 fn speed_guess(info : &InitInfo, u : &Vec<Vec<f64>>, u_temp : &mut Vec<Vec<f64>>, v : &Vec<Vec<f64>>, v_temp : &mut Vec<Vec<f64>>, dt : f64) {
     
@@ -488,7 +502,7 @@ fn speed_guess(info : &InitInfo, u : &Vec<Vec<f64>>, u_temp : &mut Vec<Vec<f64>>
             }
         },
         
-        _ => {
+        1 => {
             
             for i in 1..info.n_x-1 {
                 for j in 1..info.n_y-1 {
@@ -497,10 +511,31 @@ fn speed_guess(info : &InitInfo, u : &Vec<Vec<f64>>, u_temp : &mut Vec<Vec<f64>>
                     v_temp[i][j] = v[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + v[i-1][j]*dt*(info.viscosity/dx.powf(2.0) + u[i][j]/(2.0*dx)) + v[i][j-1]*dt*(info.viscosity/dy.powf(2.0) + v[i][j]/(2.0*dy)) + v[i+1][j]*dt*(info.viscosity/dx.powf(2.0) - u[i][j]/(2.0*dx)) + v[i][j+1]*dt*(info.viscosity/dy.powf(2.0) - v[i][j]/(2.0*dy));
 
                 }
-            
             }
         },
         
+        _ => {
+            
+            for i in 1..info.n_x-1 {
+                cd2_scheme(i, 1, info, u, u_temp, v, v_temp, dt);
+                cd2_scheme(i, info.n_y - 2, info, u, u_temp, v, v_temp, dt);
+            }
+            
+            
+            for j in 2..info.n_y-2 {
+                cd2_scheme(1, j, info, u, u_temp, v, v_temp, dt);
+                cd2_scheme(info.n_x - 2, j, info, u, u_temp, v, v_temp, dt);
+            }
+            
+            for i in 2..info.n_x-2 {
+                for j in 2..info.n_y-2 {
+                    
+                    u_temp[i][j] = u[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + u[i-1][j]*dt*(info.viscosity/dx.powf(2.0) + 4.0*u[i][j]/(6.0*dx)) + u[i][j-1]*dt*(info.viscosity/dy.powf(2.0) + 4.0*v[i][j]/(6.0*dy)) + u[i+1][j]*dt*(info.viscosity/dx.powf(2.0) - 4.0*u[i][j]/(6.0*dx)) + u[i][j+1]*dt*(info.viscosity/dy.powf(2.0) - 4.0*v[i][j]/(6.0*dy)) - u[i-2][j]*dt*u[i][j]/(12.0*dx) - u[i][j-2]*dt*v[i][j]/(12.0*dy) + u[i+2][j]*dt*u[i][j]/(12.0*dx) + u[i][j+2]*dt*v[i][j]/(12.0*dy);
+                    v_temp[i][j] = v[i][j]*(1.0 - 2.0*info.viscosity*dt*(1.0/dx.powf(2.0) + 1.0/dy.powf(2.0))) + v[i-1][j]*dt*(info.viscosity/dx.powf(2.0) + 4.0*u[i][j]/(6.0*dx)) + v[i][j-1]*dt*(info.viscosity/dy.powf(2.0) + 4.0*v[i][j]/(6.0*dy)) + v[i+1][j]*dt*(info.viscosity/dx.powf(2.0) - 4.0*u[i][j]/(6.0*dx)) + v[i][j+1]*dt*(info.viscosity/dy.powf(2.0) - 4.0*v[i][j]/(6.0*dy)) - v[i-2][j]*dt*u[i][j]/(12.0*dx) - v[i][j-2]*dt*v[i][j]/(12.0*dy) + v[i+2][j]*dt*u[i][j]/(12.0*dx) + v[i][j+2]*dt*v[i][j]/(12.0*dy);
+
+                }
+            }
+        },
         
     };
     
